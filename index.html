@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>BitSeed Sender</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <style>
+
+    /* Bitcoin-themed styles */
+
+    :root {
+
+      --bitcoin-orange: #F7931A;
+
+      --bitcoin-dark: #1A1A1A;
+
+      --bitcoin-light: #FFE9C2;
+
+      --bitcoin-grey: #4D4D4D;
+
+    }
+
+    
+
+    body {
+
+      font-family: 'Courier New', monospace;
+
+      background-color: var(--bitcoin-dark);
+
+      color: var(--bitcoin-light);
+
+      text-align: center;
+
+      margin: 10px;
+
+    }
+
+    
+
+    h1 {
+
+      color: var(--bitcoin-orange);
+
+      margin-bottom: 20px;
+
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+
+    }
+
+    
+
+    #scrollContainer {
+
+      width: 100%;
+
+      height: 400px;
+
+      overflow: auto;
+
+      margin: 0 auto;
+
+      border: 2px solid var(--bitcoin-orange);
+
+      background-color: var(--bitcoin-grey);
+
+    }
+
+    
+
+    #gameContainer {
+
+      display: flex;
+
+      justify-content: center;
+
+      align-items: flex-start;
+
+      position: relative;
+
+      width: max-content;
+
+    }
+
+    
+
+    .ruler {
+
+      width: 25px;
+
+      position: relative;
+
+      color: var(--bitcoin-orange);
+
+    }
+
+    
+
+    .ruler span {
+
+      display: block;
+
+      position: absolute;
+
+      font-size: 10px;
+
+      width: 100%;
+
+      text-align: center;
+
+    }
+
+    
+
+    #leftRuler {
+
+      text-align: right;
+
+    }
+
+    
+
+    #rightRuler {
+
+      text-align: left;
+
+    }
+
+    
+
+    #grid {
+
+      display: grid;
+
+      grid-template-columns: repeat(10, 30px);
+
+      grid-gap: 3px;
+
+      margin: 0 10px;
+
+      justify-content: center;
+
+    }
+
+    
+
+    .cell {
+
+      width: 30px;
+
+      height: 30px;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      background-color: rgba(247, 147, 26, 0.1);
+
+      border: 1px solid var(--bitcoin-orange);
+
+      font-size: 10px;
+
+      cursor: pointer;
+
+      user-select: none;
+
+      color: var(--bitcoin-light);
+
+    }
+
+    
+
+    .cell.hidden {
+
+      background-color: var(--bitcoin-dark);
+
+      cursor: not-allowed;
+
+    }
+
+    
+
+    button {
+
+      padding: 10px 20px;
+
+      font-size: 16px;
+
+      margin: 5px;
+
+      background-color: var(--bitcoin-orange);
+
+      color: var(--bitcoin-dark);
+
+      border: none;
+
+      border-radius: 3px;
+
+      cursor: pointer;
+
+      font-family: 'Courier New', monospace;
+
+      font-weight: bold;
+
+    }
+
+    
+
+    button:hover {
+
+      background-color: #e08215;
+
+    }
+
+    
+
+    #message {
+
+      font-size: 18px;
+
+      color: var(--bitcoin-orange);
+
+      margin-top: 10px;
+
+    }
+
+    
+
+    #canvas {
+
+      display: none;
+
+    }
+
+    
+
+    /* Color picker styling */
+
+    input[type="color"] {
+
+      width: 30px;
+
+      height: 30px;
+
+      border: 2px solid var(--bitcoin-light);
+
+      cursor: pointer;
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <h1>BitSeed Sender</h1>
+
+  <div id="scrollContainer">
+
+    <div id="gameContainer">
+
+      <div id="leftRuler" class="ruler"></div>
+
+      <div id="grid"></div>
+
+      <div id="rightRuler" class="ruler"></div>
+
+    </div>
+
+  </div>
+
+  <button id="shuffleBtn">Shuffle Numbers</button>
+
+  <button id="startGameBtn">Start Game</button>
+
+  <button id="screenshotBtn">Take Screenshot</button>
+
+  <p id="message"></p>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+
+    // Your original JavaScript remains exactly the same
+
+    const grid = document.getElementById("grid");
+
+    const shuffleBtn = document.getElementById("shuffleBtn");
+
+    const startGameBtn = document.getElementById("startGameBtn");
+
+    const message = document.getElementById("message");
+
+    const screenshotBtn = document.getElementById("screenshotBtn");
+
+    const scrollContainer = document.getElementById("scrollContainer");
+
+
+
+    const GRID_SIZE = 2050; // Total number of cells
+
+    let colorSequence = [];
+
+    let playerSequence = [];
+
+    let isPlayer1Turn = false;
+
+
+
+    // Generate grid
+
+    function generateGrid() {
+
+      grid.innerHTML = "";
+
+      const numbers = Array.from({ length: GRID_SIZE }, (_, i) => i + 1); // Create numbers from 1 to GRID_SIZE
+
+      numbers.forEach(num => {
+
+        const cell = document.createElement("div");
+
+        cell.classList.add("cell");
+
+        cell.textContent = num;
+
+        cell.dataset.index = num - 1; // Store cell position (0-based index)
+
+        cell.addEventListener("click", handleCellClick);
+
+        grid.appendChild(cell);
+
+      });
+
+
+
+      // Create ruler numbers
+
+      createRulerNumbers();
+
+    }
+
+
+
+    // Create the ruler's numbers
+
+    function createRulerNumbers() {
+
+      const leftRuler = document.getElementById("leftRuler");
+
+      const rightRuler = document.getElementById("rightRuler");
+
+
+
+      leftRuler.innerHTML = ""; // Clear previous ruler numbers
+
+      rightRuler.innerHTML = ""; // Clear previous ruler numbers
+
+
+
+      const cellHeight = 35; // Height of each cell in the grid (adjust as needed for your design)
+
+      const totalRows = Math.ceil(GRID_SIZE / 10); // Total number of rows based on grid size and columns
+
+
+
+      for (let i = 1; i <= totalRows; i++) {
+
+        // Create number for the left ruler
+
+        const leftSpan = document.createElement("span");
+
+        leftSpan.textContent = i;
+
+        leftSpan.style.top = `${(i - 1) * cellHeight}px`; // Position numbers based on cell height
+
+        leftRuler.appendChild(leftSpan);
+
+
+
+        // Create number for the right ruler
+
+        const rightSpan = document.createElement("span");
+
+        rightSpan.textContent = i;
+
+        rightSpan.style.top = `${(i - 1) * cellHeight}px`; // Position numbers based on cell height
+
+        rightRuler.appendChild(rightSpan);
+
+      }
+
+    }
+
+
+
+    // Shuffle numbers
+
+    function shuffleGrid() {
+
+      const cells = Array.from(grid.children);
+
+      const shuffledNumbers = cells.map(cell => cell.dataset.index).sort(() => Math.random() - 0.5);
+
+      cells.forEach((cell, index) => {
+
+        cell.textContent = shuffledNumbers[index];
+
+        cell.dataset.index = shuffledNumbers[index];
+
+      });
+
+    }
+
+
+
+    // Handle cell click
+
+    function handleCellClick(e) {
+
+      const cell = e.target;
+
+
+
+      if (!isPlayer1Turn) {
+
+        // Player 2's turn: select color sequence
+
+        if (colorSequence.length < 12) { // Adjust for more colors
+
+          showColorPicker(cell);
+
+        }
+
+      } else {
+
+        // Player 1's turn: match sequence of cell positions
+
+        if (playerSequence.length < 12) {
+
+          playerSequence.push(cell.dataset.index);
+
+          cell.classList.add("hidden"); // Hide the cell after selection
+
+        }
+
+        if (playerSequence.length === 12) {
+
+          checkWinner();
+
+        }
+
+      }
+
+    }
+
+
+
+    // Show color picker for Player 2
+
+    function showColorPicker(cell) {
+
+      const colorPicker = document.createElement("input");
+
+      colorPicker.type = "color";
+
+      colorPicker.style.position = "absolute";
+
+      colorPicker.style.left = `${cell.offsetLeft + cell.offsetWidth / 2}px`;
+
+      colorPicker.style.top = `${cell.offsetTop + cell.offsetHeight / 2}px`;
+
+
+
+      document.body.appendChild(colorPicker);
+
+
+
+      colorPicker.addEventListener("change", () => {
+
+        const color = colorPicker.value;
+
+        cell.style.backgroundColor = color;
+
+        cell.textContent = ""; // Hide number
+
+        colorSequence.push(cell.dataset.index); // Store cell position (index)
+
+        colorPicker.remove();
+
+
+
+        if (colorSequence.length === 12) {
+
+          showColorsForPlayer1();
+
+        }
+
+      });
+
+
+
+      colorPicker.addEventListener("blur", () => colorPicker.remove());
+
+      colorPicker.focus();
+
+    }
+
+
+
+    // Show colors for Player 1 with a 30-second timer
+
+    function showColorsForPlayer1() {
+
+      let countdown = 30; // Start countdown at 30 seconds
+
+      message.textContent = `Key sender, screen capture the sequence within the next ${countdown} seconds.`;
+
+      isPlayer1Turn = true;
+
+
+
+      // Hide all numbers
+
+      grid.querySelectorAll(".cell").forEach(cell => {
+
+        cell.textContent = ""; // Clear number display
+
+      });
+
+
+
+      // Start the countdown
+
+      const interval = setInterval(() => {
+
+        countdown -= 1;
+
+        if (countdown > 0) {
+
+          message.textContent = `Key sender, please screen capture the key color sequence in the next ${countdown} seconds.`;
+
+        } else {
+
+          clearInterval(interval); // Stop the countdown
+
+          message.textContent = "Key receiver! Please match the key sender's sequence.";
+
+          grid.querySelectorAll(".cell").forEach(cell => {
+
+            cell.style.backgroundColor = ""; // Clear colors
+
+            cell.textContent = cell.dataset.index; // Restore numbers
+
+          });
+
+        }
+
+      }, 1000); // Update every second
+
+    }
+
+
+
+    // Check winner
+
+    function checkWinner() {
+
+      const isCorrectSequence = playerSequence.every((selectedIndex, index) => {
+
+        return selectedIndex === colorSequence[index];
+
+      });
+
+
+
+      if (isCorrectSequence) {
+
+        message.textContent = "Congratulations Key receiver! Correct key Sequence!";
+
+      } else {
+
+        message.textContent = "Sorry Key receiver! Wrong key Sequence.";
+
+      }
+
+      disableGrid();
+
+    }
+
+
+
+    // Disable grid interaction
+
+    function disableGrid() {
+
+      grid.querySelectorAll(".cell").forEach(cell => {
+
+        cell.removeEventListener("click", handleCellClick);
+
+      });
+
+    }
+
+
+
+    // Reset game
+
+    function resetGame() {
+
+      grid.querySelectorAll(".cell").forEach(cell => {
+
+        cell.classList.remove("hidden", "colorMode");
+
+        cell.style.backgroundColor = "";
+
+        cell.textContent = cell.dataset.index; // Restore numbers
+
+        cell.addEventListener("click", handleCellClick);
+
+      });
+
+      colorSequence = [];
+
+      playerSequence = [];
+
+      isPlayer1Turn = false;
+
+      message.textContent = "";
+
+    }
+
+
+
+    // Screenshot functionality
+
+    function takeScreenshot() {
+
+      html2canvas(scrollContainer).then(canvas => {
+
+        const link = document.createElement("a");
+
+        link.href = canvas.toDataURL("image/png");
+
+        link.download = "scrollable_screenshot.png";
+
+        link.click();
+
+      });
+
+    }
+
+
+
+    // Initialize game
+
+    generateGrid();
+
+
+
+    // Event listeners
+
+    shuffleBtn.addEventListener("click", shuffleGrid);
+
+    startGameBtn.addEventListener("click", () => {
+
+      resetGame();
+
+      message.textContent = "Key sender, please select your sequence of colors.";
+
+    });
+
+    screenshotBtn.addEventListener("click", takeScreenshot);
+
+  </script>
+
+</body>
+
+</html>
+
